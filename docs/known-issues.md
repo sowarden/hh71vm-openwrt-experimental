@@ -50,6 +50,18 @@ sftp-сервера. Используйте `scp -O`.
 ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.1
 ```
 
+**SSH выдаёт такую ошибку при подключении:**
+```
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+...
+```
+Удалите файл C:\Users\Ваш_пользователь\\.ssh\known_hosts, или аналогичный файл вашего клиента который вы используете для подключения к SSH.
+
 **Телефон сам отключается от сети.** Android и iOS уходят с сетей без доступа в интернет.
 Это поведение клиента, а не разрыв связи. Чтобы отличить одно от другого, смотрите, рвётся
 ли соединение при активном обмене данными.
