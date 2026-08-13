@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Известные ограничения
+    url: https://github.com/sowarden/hh71vm-openwrt-experimental/blob/main/docs/izvestnye-problemy.md
+    about: Прежде чем заводить issue — посмотрите, не описано ли это уже здесь.
+  - name: Что и как тестировать
+    url: https://github.com/sowarden/hh71vm-openwrt-experimental/blob/main/docs/chto-testirovat.md
+    about: Список проверок и требования к отчёту.

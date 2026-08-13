@@ -1,0 +1,87 @@
+name: Отчёт об ошибке
+description: Что-то не работает или работает не так, как описано
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что нашли время. Прежде чем заполнять — загляните в
+        [известные ограничения](../blob/main/docs/izvestnye-problemy.md): возможно, это уже
+        описано, и тогда отчёт не нужен.
+
+        **Почти любую проблему невозможно разобрать без полного лога UART.** Скрипт
+        сохраняет его сам в `tools/ram-boot-logs/`.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Что произошло
+      description: Что делали, что ожидали увидеть, что увидели вместо этого.
+      placeholder: |
+        Подключил телефон к сети HH71VM-TEST. Адрес по DHCP получен, но через
+        примерно две минуты соединение рвётся, и так каждый раз.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      description: По шагам. Воспроизводимая проблема лечится, невоспроизводимая — почти нет.
+      placeholder: |
+        1. Загрузил образ из ОЗУ по инструкции
+        2. Подключил телефон к Wi-Fi
+        3. Запустил копирование файла по SSH
+        4. Через ~2 минуты связь пропадает
+    validations:
+      required: true
+
+  - type: textarea
+    id: uart-log
+    attributes:
+      label: Лог UART с момента подачи питания
+      description: >
+        Приложите файл из `tools/ram-boot-logs/` или вставьте текст. Именно текстом,
+        не скриншотом.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: dmesg
+    attributes:
+      label: Вывод dmesg
+      description: Если система загрузилась — `dmesg` целиком.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: image-version
+    attributes:
+      label: Версия образа
+      description: Строка из CHANGELOG или sha256 файла прошивки.
+      placeholder: "2026-08-13, sha256 70fe5aee..."
+    validations:
+      required: true
+
+  - type: input
+    id: region
+    attributes:
+      label: Регион покупки устройства и оператор
+      placeholder: "Россия, устройство от оператора"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Проверки перед отправкой
+      options:
+        - label: Я прочитал список известных ограничений, моей проблемы там нет
+          required: true
+        - label: Я приложил лог UART текстом
+          required: true
+        - label: Я понимаю, что 5 ГГц, модем и веб-интерфейс в этой сборке отсутствуют
+          required: true

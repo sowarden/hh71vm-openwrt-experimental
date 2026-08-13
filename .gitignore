@@ -1,0 +1,7 @@
+# логи, которые пишут инструменты
+tools/ram-boot-logs/
+tools/romloader-logs/
+tools/tftp-put-logs/
+
+__pycache__/
+*.pyc
