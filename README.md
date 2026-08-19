@@ -1,49 +1,5 @@
 # OpenWrt для Alcatel LINKHUB HH71VM — экспериментальная сборка для запуска из ОЗУ
 
-```markdown
-> [!IMPORTANT]
-> ### 🚧 Progress update — 2026-08-19
->
-> **English**
->
-> The OpenWrt port is currently approximately **75–80% complete**.
->
-> This repository does **not yet contain the latest development changes**.
->
-> Current development status:
-> - 5 GHz Wi-Fi support is working.
-> - The Realtek subsystem can communicate with the Qualcomm modem subsystem and establish a mobile Internet connection.
-> - LuCI has been ported and a custom theme has been developed.
-> - A modem control interface has been integrated into LuCI, reproducing functionality from the original stock web interface.
->
-> The remaining work mainly consists of testing and fixing bugs discovered during real-world use.
->
-> Once this stage is complete, the updated firmware, source code, build instructions, installation instructions, and English documentation will be published here.
->
-> Further bug fixes, device-specific testing, and long-term development of the project will depend largely on community interest and contributions from HH71VM owners willing to test the firmware on their devices.
->
-> ---
->
-> **Русский**
->
-> Работа над портированием OpenWrt завершена примерно на **75–80%**.
->
-> Текущая версия репозитория **пока не содержит последних изменений разработки**.
->
-> На данный момент:
-> - реализована поддержка Wi-Fi 5 ГГц;
-> - Realtek-часть устройства взаимодействует с Qualcomm-модемом и может поднимать мобильное интернет-соединение;
-> - портирован LuCI и разработана собственная тема;
-> - в LuCI добавлена панель управления модемной частью, повторяющая основной функционал веб-интерфейса стоковой прошивки.
->
-> Основная оставшаяся работа — тестирование и исправление ошибок, которые удастся обнаружить при реальном использовании устройства.
->
-> После завершения этого этапа здесь будут опубликованы актуальная прошивка, исходный код, инструкции по сборке и установке, а также англоязычная документация.
->
-> Дальнейшее исправление ошибок, тестирование на разных устройствах и развитие проекта во многом будет зависеть от интереса сообщества и владельцев HH71VM, готовых тестировать прошивку на своих устройствах.
-```
-
-
 Порт OpenWrt на Realtek-сторону роутера **Alcatel LINKHUB HH71VM** (SoC RTL8197FS).
 Сборка запускается **из оперативной памяти** и **не изменяет содержимое флеш-памяти**.
 
