@@ -1,0 +1,10 @@
+#!/bin/sh
+# Register the theme and make it the default.  luci-theme-bootstrap stays installed, so
+# the stock look remains selectable under System -> System -> Language and Style.
+uci -q batch <<-EOT
+	delete luci.themes.HH71VM
+	set luci.themes.HH71VM=/luci-static/hh71vm
+	set luci.main.mediaurlbase=/luci-static/hh71vm
+	commit luci
+EOT
+exit 0

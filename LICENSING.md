@@ -1,62 +1,44 @@
-# Лицензии: что чем закрыто
+# Licensing map
 
-В репозитории лежат части с **разным** правовым режимом. Ниже — что именно и почему.
+This repository contains several categories of material. Their licenses are not identical.
 
-## Кратко
+## Source and firmware
 
-| Что | Лицензия | Коммерческое использование |
-|---|---|---|
-| `firmware/` — образ прошивки | **GPL-2.0** | Разрешено. Запретить нельзя (см. ниже) |
-| `docs/`, `README.md`, `CHANGELOG.md` | **CC BY-NC-SA 4.0** | Запрещено без письменного разрешения автора |
-| `tools/` — скрипты на Python | **CC BY-NC-SA 4.0** | Запрещено без письменного разрешения автора |
+The OpenWrt/Linux source delta and the resulting firmware contain components under their
+respective upstream licenses. Much of the kernel, BSP, Ethernet, and Wi-Fi work is covered by
+GPL-2.0. Individual OpenWrt and LuCI packages may carry other compatible licenses; their file
+headers and package metadata remain authoritative.
 
-## Почему образ прошивки нельзя закрыть от коммерческого использования
+The repository root [`LICENSE`](LICENSE) contains GPL-2.0. It applies to project source that
+is marked or distributed under GPL-2.0; it does not replace a more specific upstream license
+notice attached to an individual component.
 
-Образ собран из ядра Linux, OpenWrt и вендорских драйверов Realtek. Всё это распространяется
-под **GPL-2.0**, и эта лицензия прямо разрешает любому использовать, изменять и
-распространять код, **в том числе в коммерческих целях**. Производная работа обязана
-оставаться под той же лицензией — иначе распространять её нельзя вообще.
+Binary radio firmware files under the vendor driver tree are included in the form supplied
+with manufacturer-published source archives. They were not modified. Their status remains
+subject to the applicable vendor terms.
 
-Попытка добавить к такому образу условие «нельзя использовать коммерчески» была бы нарушением
-GPL с нашей стороны, и юридической силы такое условие не имело бы. Поэтому здесь честно
-указана GPL-2.0, а не что-то более строгое.
+Source provenance, pinned revisions, and build instructions are documented in
+[`docs/sources.md`](docs/sources.md).
 
-**Что при этом GPL всё-таки защищает.** Она работает не как запрет, а как принуждение к
-открытости: любой, кто возьмёт этот образ, изменит его и начнёт распространять — обязан
-опубликовать свои изменения под той же GPL-2.0 и указать происхождение. То есть закрыть
-доработки и продавать их как проприетарный продукт нельзя. Для проекта такого рода это
-обычно ровно та защита, которая и нужна.
+## Documentation and RAM boot tool
 
-## Что закрыто от коммерческого использования
+Unless a file says otherwise, the repository documentation and `tools/ram_boot.py` are
+licensed under
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
-Всё, что написано авторами этого репозитория и не является производным от GPL-кода:
-документация и инструменты в `tools/`.
+That means attribution and ShareAlike are required, and commercial use requires separate
+permission from the author.
 
-Они распространяются под лицензией
-**[Creative Commons Attribution-NonCommercial-ShareAlike 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ru)**:
+Creative Commons recommends software-specific licenses for code. The existing CC license is
+retained here to preserve the repository's stated licensing policy; a future release may
+move the RAM boot tool to an explicit software license after an author decision.
 
-- **Attribution** — при использовании нужно указать автора и ссылку на репозиторий;
-- **NonCommercial** — коммерческое использование запрещено без отдельного письменного
-  разрешения;
-- **ShareAlike** — производные работы распространяются на тех же условиях.
+## Contributions
 
-За разрешением на коммерческое использование — через Issues репозитория.
+Do not submit code copied from an unknown or incompatible source. A contribution should
+identify its origin and license when that is not already obvious from the surrounding tree.
+By contributing to an existing licensed file, you agree that the contribution can be
+distributed under that file's license.
 
-## Оговорка о выборе лицензии для кода
-
-Лицензии Creative Commons созданы для текстов и медиа, а не для программ, и сами
-Creative Commons не рекомендуют применять их к исходному коду. Для скриптов в `tools/`
-формально более подходящим был бы аналог с тем же смыслом, написанный для кода, —
-например [PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).
-
-Здесь выбран единый CC BY-NC-SA ради простоты: скрипты небольшие, вспомогательные, и
-разделять их отдельной лицензией смысла мало. Если это когда-нибудь станет важно, замена
-на PolyForm ничего не сломает.
-
-## Прошивка радиочипа
-
-В составе образа есть бинарные прошивки радиочастей, поставляемые Realtek в виде данных в
-их GPL-архивах. Они не изменялись и включены в том виде, в каком опубликованы вендором;
-их правовой статус определяется условиями производителя чипа.
-
-Подробнее о происхождении всех частей образа — [docs/sources.md](docs/sources.md).
+For commercial permission covering the separately licensed documentation or RAM boot tool,
+open an issue in the repository.

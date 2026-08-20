@@ -1,159 +1,260 @@
-# Запуск сборки из ОЗУ — пошагово
+# Run the HH71VM test build from RAM
 
-Процедура **не изменяет флеш-память**. Загрузчик устройства принимает образ по сети и
-выполняет его прямо из ОЗУ. Выключение питания возвращает заводскую прошивку.
+This guide covers the only public deployment path supported by this repository: loading the
+`nfjrom` image into RAM through the Realtek bootloader.
 
-## Что понадобится
+On the reference HH71VM, this procedure did not write the Realtek SPI flash. The image runs
+until power is removed. Do not substitute another image or bootloader command.
 
-| Что | Подробности |
+## Before you begin
+
+You need:
+
+| Item | Requirement |
 |---|---|
-| Переходник USB-UART | Уровни **3,3 В**. 5-вольтовый переходник может повредить SoC |
-| Отвёртка | Корпус придётся вскрыть — контакты UART внутри |
-| Кабель Ethernet | Между LAN-портом роутера и компьютером |
-| **Python 3** | Любая версия 3.x. Проверялось на 3.9. **Python 2 не подойдёт** |
-| Модуль `pyserial` | `pip install pyserial` (или `pip3`, если в системе есть и Python 2) |
-| Образ | `firmware/openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin` из этого репозитория |
+| USB-to-UART adapter | **3.3 V logic levels**; never use 5 V |
+| UART wiring | RX, TX, and GND only; do not connect adapter power |
+| Ethernet cable | Router LAN port directly to the test computer |
+| Python | Python 3; the tool was tested with Python 3.9 |
+| Python package | `pyserial`, installed from `tools/requirements.txt` |
+| Image | `firmware/openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin` |
 
-TFTP-сервер устанавливать **не нужно** — он встроен в скрипт.
+You must open the enclosure. The Realtek-side UART pinout is shown in this
+[4PDA hardware post](https://4pda.to/forum/index.php?showtopic=1037320&view=findpost&p=113177788).
+That external post is currently the pinout reference; visually confirm orientation before
+connecting anything.
 
-> В Linux и macOS команда обычно называется `python3`, а не `python`. Если `python --version`
-> показывает версию 2.x — используйте везде ниже `python3` вместо `python`.
+> [!WARNING]
+> The HH71VM contains separate Realtek and Qualcomm systems. Use the Realtek UART. If the
+> console output is about the Qualcomm modem, stop and recheck the connection.
 
-Драйвер переходника: Windows обычно ставит его сам, но для распространённых чипов FTDI и
-CH340 может потребоваться драйвер с сайта производителя. Признак, что драйвер встал —
-в Диспетчере устройств появился новый COM-порт.
+## 1. Download and verify the repository
 
-## Шаг 1. UART
+Clone the repository:
 
-Подключите переходник к контактам Realtek-стороны: **RX, TX, GND**. Питание с переходника
-не подавайте — роутер питается своим адаптером. Распиновка контактов UART [опубликована на 4PDA](https://4pda.to/forum/index.php?showtopic=1037320&view=findpost&p=113177788).
-
-Параметры порта: **38400 8N1**.
-
-### Как узнать имя своего порта
-
-Во всех командах ниже встречается `COM8` — **это имя порта на конкретном компьютере автора,
-у вас оно почти наверняка другое.** Определить своё:
-
-- **Windows.** Диспетчер устройств → раздел «Порты (COM и LPT)». Переходник виден как
-  «USB Serial Port (COMxx)» или «USB-SERIAL CH340 (COMxx)». Проще всего посмотреть список
-  до и после подключения переходника — появившийся порт и есть ваш.
-- **Linux.** Обычно `/dev/ttyUSB0`. Проверить: `ls /dev/ttyUSB* /dev/ttyACM*`, либо сразу
-  после подключения посмотреть `dmesg | tail`.
-- **macOS.** Обычно `/dev/tty.usbserial-*`: `ls /dev/tty.usb*`
-
-В Linux для доступа к порту пользователь должен состоять в группе `dialout`
-(`sudo usermod -aG dialout $USER`, затем перелогиниться), иначе будет «отказано в доступе».
-
-> ⚠️ У устройства две независимые системы: Realtek (Wi-Fi, свитч) и Qualcomm (модем).
-> Нужна именно консоль Realtek. Если при включении в терминале идёт вывод про Qualcomm или
-> модем — вы подключились не туда.
-
-Проверить связь просто: включите питание и посмотрите, идёт ли текст загрузки.
-
-## Шаг 2. Сеть
-
-Соедините LAN-порт роутера напрямую с компьютером и задайте компьютеру статический адрес:
-
-```
-IP:    192.168.1.50
-Маска: 255.255.255.0
+```text
+git clone https://github.com/sowarden/hh71vm-openwrt-experimental.git
+cd hh71vm-openwrt-experimental
 ```
 
-Шлюз и DNS не нужны. Загрузчик устройства во время передачи образа отвечает по адресу
-`192.168.1.6`; загруженная система потом поднимется на `192.168.1.1`.
+Alternatively, use GitHub's **Code → Download ZIP**, extract it, and open a terminal in the
+extracted directory.
 
-Если на компьютере несколько сетевых интерфейсов, убедитесь, что подсеть `192.168.1.0/24`
-не занята другим адаптером — иначе пакеты уйдут не туда.
+Verify the image before connecting the router.
 
-## Шаг 3. Вход в консоль загрузчика
+Windows PowerShell:
 
-1. Отключите питание роутера.
-2. Зажмите и удерживайте кнопку **WPS**.
-3. Подайте питание, не отпуская кнопку.
-4. Отпустите кнопку через несколько (примерно 10-12) секунд.
-
-Чтобы убедится, что вы корректно попали в загрузчик — можете подключится к консоли UART из PuTTY. Если в консоли видно приглашение <RealTek> и нет быстрого потока ошибок, то значит всё хорошо. Если в консоли будет какая-то небольшая строка из рандомных символов, то просто нажмите Enter. Если же приглашения <RealTek> нету либо в консоли сыпяться ошибки/предупреждения, то перезагрузите устройство и попробуйте снова с меньшим/большим интервалом удержания WPS. 
-
-```
-<RealTek>
+```powershell
+Get-FileHash -Algorithm SHA256 firmware\openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin
 ```
 
-Это ROM-загрузчик. Пока вы в нём, устройство ничего не делает и ничего не портит.
+Linux or macOS:
 
-## Шаг 4. Запуск образа
-
-Закройте терминальную программу (PuTTY и подобные держат COM-порт и не дают скрипту к нему
-подключиться), затем выполните из корня репозитория:
-
+```sh
+cd firmware
+sha256sum -c SHA256SUMS
+cd ..
 ```
+
+Expected SHA-256:
+
+```text
+4d4a329edbe034e431a12f4f57aa8c46c4f4fe51a4d1d161a852b6a9134691f7
+```
+
+Stop if the checksum differs.
+
+## 2. Install the Python dependency
+
+Windows:
+
+```text
+python -m pip install -r tools/requirements.txt
+```
+
+Linux or macOS:
+
+```text
+python3 -m pip install -r tools/requirements.txt
+```
+
+No external TFTP server is required; the RAM boot tool contains the required TFTP client.
+
+## 3. Connect the UART
+
+With the router powered off, connect:
+
+- adapter TX to router RX;
+- adapter RX to router TX;
+- adapter GND to router GND.
+
+Do **not** connect the adapter's VCC/5 V/3.3 V power pin. Power the router with its normal
+power supply.
+
+Serial settings are `38400 baud`, `8 data bits`, `no parity`, `1 stop bit` (`38400 8N1`).
+
+Find the serial device name:
+
+- Windows: **Device Manager → Ports (COM & LPT)**, for example `COM8`;
+- Linux: usually `/dev/ttyUSB0` or `/dev/ttyACM0`;
+- macOS: usually `/dev/tty.usbserial-*`.
+
+On Linux, serial access may require membership in the `dialout` group. Log out and back in
+after changing group membership.
+
+## 4. Configure the computer's Ethernet interface
+
+Connect the computer directly to the router's LAN port and set a static IPv4 address:
+
+```text
+Address: 192.168.1.50
+Mask:    255.255.255.0
+Gateway: 192.168.1.1
+DNS:     leave empty
+```
+
+The gateway does not interfere with the bootloader transfer and allows the computer to use
+the router for routed Internet access after OpenWrt starts. DNS may remain empty for the RAM
+transfer itself.
+
+Disable or disconnect other interfaces using `192.168.1.0/24` to avoid routing the TFTP
+traffic to the wrong adapter. During transfer, the bootloader uses `192.168.1.6`; OpenWrt
+uses `192.168.1.1` after boot.
+
+## 5. Enter the Realtek bootloader
+
+1. Open a serial terminal at `38400 8N1`.
+2. Disconnect router power.
+3. Hold the WPS button.
+4. Apply power while continuing to hold WPS.
+5. Release WPS when the console stops at the prompt:
+
+   ```text
+   <RealTek>
+   ```
+
+On the reference unit, the useful hold time was roughly 10–12 seconds, but use the prompt,
+not the stopwatch, as the success criterion. If a short line of unreadable characters is
+shown, press Enter once. If normal boot continues, power off and try again.
+
+Do not enter any flash commands.
+
+## 6. Start the RAM image
+
+Close the serial terminal completely; only one program can own the port. From the repository
+root, run the command below and replace `COM8` with your actual port:
+
+```text
 python tools/ram_boot.py firmware/openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin --port COM8
 ```
 
-**Замените `COM8` на имя своего порта** (см. выше). В Linux/macOS это будет что-то вроде
-`--port /dev/ttyUSB0`, а сама команда — `python3`.
+Linux or macOS example:
 
-Имя файла образа менять нельзя: загрузчик решает, выполнять принятое или писать во флеш,
-именно по подстроке `nfjrom` в имени.
-
-Скрипт сам выполнит нужные команды загрузчика, передаст образ по TFTP и покажет загрузку
-ядра. Передача 3,3 МБ занимает несколько секунд. Полный лог сохраняется в
-`tools/ram-boot-logs/` — **он понадобится, если будете сообщать о проблеме**.
-
-Признак успеха — в конце вывода появляются строки вида:
-
+```text
+python3 tools/ram_boot.py firmware/openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin --port /dev/ttyUSB0
 ```
+
+Do not rename the image. The verified bootloader path selects RAM execution from the
+`nfjrom` substring in the transferred filename. The tool also sends `AUTOBURN 0` and exposes
+no flash-write command.
+
+The complete serial session is saved automatically under `tools/ram-boot-logs/`. Keep this
+file even when boot succeeds.
+
+Expected milestones include:
+
+```text
+Jump to 0x84000000
 procd: - init -
 Please press Enter to activate this console.
 ```
 
-## Шаг 5. Проверка
+If your output differs, do not start guessing bootloader commands. Save the log and report
+the exact last line reached.
 
-**Ethernet и SSH:**
+## 7. Connect to OpenWrt
 
-```
+Ethernet:
+
+```text
 ping 192.168.1.1
 ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.1
 ```
 
-Пароль не запрашивается — система свежая, пароль root не задан. Ключ `HostKeyAlgorithms`
-нужен потому, что встроенный SSH-сервер предлагает только устаревший алгоритм ssh-rsa.
+The image initially has no root password. Modern OpenSSH clients need the explicit legacy
+host-key option shown above.
 
-> Копировать файлы обычным `scp` **не получится** — в сборке нет sftp-сервера. Используйте
-> старый протокол: `scp -O файл root@192.168.1.1:/tmp/`
+LuCI:
 
-**Wi-Fi:** в списке сетей должна появиться **`HH71VM-TEST`**, пароль **`hh71vm12345`**,
-канал 6, диапазон 2,4 ГГц. Клиент должен подключиться и получить адрес вида `192.168.1.x`.
+```text
+http://192.168.1.1/
+```
 
-## Возврат к заводской прошивке
+Default Wi-Fi:
 
-Выключите и включите питание обычным образом, без удержания WPS. Флеш не изменялся, поэтому
-устройство загрузится ровно так же, как до эксперимента.
+| Band | SSID | Password |
+|---|---|---|
+| 2.4 GHz | `HH71VM` | `hh71vm12345` |
+| 5 GHz | `HH71VM-5G` | `hh71vm12345` |
 
-## Если что-то пошло не так
+Set a temporary root password in LuCI before connecting untrusted clients. OpenWrt-side
+changes disappear when this RAM image is power-cycled.
 
-**Нет приглашения `<RealTek>`.** Кнопка отпущена слишком рано, либо перепутаны RX/TX, либо
-неверная скорость порта. Проверьте, что при обычном включении (без WPS) в терминал вообще
-идёт текст.
+> [!CAUTION]
+> The modem pages control the separate Qualcomm subsystem. Changes to SIM, APN, or network
+> mode may persist on that subsystem and are not guaranteed to be undone by rebooting the
+> Realtek side. Change modem settings only when intentionally testing them and record the
+> original values first.
 
-**Скрипт пишет, что порт занят.** Закройте терминальную программу — COM-порт может держать
-только одно приложение.
+## Return to the installed firmware
 
-**Передача не начинается.** Три обычные причины:
-- адрес компьютера не `192.168.1.50/24` либо эта подсеть занята другим сетевым адаптером;
-- кабель не в LAN-порту роутера;
-- **брандмауэр блокирует входящие UDP на порт 69.** На Windows встроенный брандмауэр обычно
-  спрашивает разрешение при первом запуске — если окно было закрыто «отменить», разрешение
-  придётся выдать вручную либо временно отключить брандмауэр для частной сети.
+Disconnect power, wait a few seconds, then power on normally without holding WPS. On the
+reference unit, this returned to the firmware already stored in flash.
 
-**«Отказано в доступе» к порту в Linux.** Пользователь не в группе `dialout`, см. выше.
+## Troubleshooting
 
-**`ModuleNotFoundError: No module named 'serial'`.** Не установлен `pyserial`, либо он
-установлен для другого интерпретатора. Поставьте так: `python -m pip install pyserial`
-(в Linux/macOS — `python3 -m pip install pyserial`).
+### No `<RealTek>` prompt
 
-**Ядро загрузилось, но нет связи по сети.** Сообщите об этом — приложите лог. Это как раз
-тот класс расхождений, ради которого сборка и публикуется.
+Confirm the Realtek UART, 3.3 V levels, RX/TX orientation, common ground, and `38400 8N1`.
+Try a slightly shorter or longer WPS hold.
 
-**Устройство не реагирует вообще.** Отключите питание на минуту и включите снова. Флеш не
-менялся, устройство не может быть повреждено этой процедурой.
+### Serial port is busy or access is denied
+
+Close PuTTY and every other serial program. On Linux, verify permissions for the serial
+device and membership in `dialout`.
+
+### `ModuleNotFoundError: No module named 'serial'`
+
+Install the dependency through the same interpreter used to run the tool:
+
+```text
+python -m pip install -r tools/requirements.txt
+```
+
+Use `python3` instead of `python` where required.
+
+### TFTP does not start
+
+Verify `192.168.1.50/24`, the direct LAN cable, and that no other adapter owns
+`192.168.1.0/24`. Allow inbound UDP for the Python interpreter in the host firewall.
+
+### OpenWrt boots but networking does not work
+
+This is a high-value compatibility result. Keep the complete UART log and submit a hardware
+compatibility report. Do not hide early boot warnings.
+
+### SSH reports a changed host key
+
+RAM boots can generate a different SSH host key. Remove only this host's stale entry:
+
+```text
+ssh-keygen -R 192.168.1.1
+```
+
+Do not delete the entire `known_hosts` file.
+
+### LuCI shows `Bad Request` or another unexpected page
+
+The browser may still have the vendor web interface cached for `192.168.1.1`. Reload the
+page with F5. If the problem remains, use a hard reload, clear the browser cache/site data
+for `192.168.1.1`, or open `http://192.168.1.1/` in a private window.

@@ -1,0 +1,30 @@
+Public port note.
+
+Public port note.
+Public port note.
+Public port note.
+
+  ERROR: "_dma_cache_wback" [drivers/net/wireless/realtek/rtl8192cd/rtl8192cd.ko] undefined!
+  ERROR: "_dma_cache_inv"   [drivers/net/wireless/realtek/rtl8192cd/rtl8192cd.ko] undefined!
+
+Public port note.
+Public port note.
+
+Public port note.
+Public port note.
+Public port note.
+
+Public port note.
+Public port note.
+
+--- a/arch/mips/mm/cache.c
++++ b/arch/mips/mm/cache.c
+@@ -64,6 +64,8 @@
+ void (*_dma_cache_inv)(unsigned long start, unsigned long size);
+ 
+ EXPORT_SYMBOL(_dma_cache_wback_inv);
++EXPORT_SYMBOL(_dma_cache_wback);
++EXPORT_SYMBOL(_dma_cache_inv);
+ 
+ #endif /* CONFIG_DMA_NONCOHERENT || CONFIG_DMA_MAYBE_COHERENT */
+ 

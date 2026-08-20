@@ -1,157 +1,144 @@
-# OpenWrt для Alcatel LINKHUB HH71VM — экспериментальная сборка для запуска из ОЗУ
+# Experimental OpenWrt RAM boot for Alcatel LINKHUB HH71VM
+
+This repository provides an **early OpenWrt build that runs from RAM** on the Realtek
+subsystem of the Alcatel LINKHUB HH71VM (`RTL8197FS` + `RTL8812FE`). Its purpose is to
+collect reproducible logs and compatibility results from HH71, HH71VM, and regional or
+board-revision variants.
 
 > [!IMPORTANT]
-> ### 🚧 Progress update — 2026-08-19
->
-> **English**
->
-> The OpenWrt port is currently approximately **75–80% complete**.
->
-> This repository does **not yet contain the latest development changes**.
->
-> Current development status:
-> - 5 GHz Wi-Fi support is working.
-> - The Realtek subsystem can communicate with the Qualcomm modem subsystem and establish a mobile Internet connection.
-> - LuCI has been ported and a custom theme has been developed.
-> - A modem control interface has been integrated into LuCI, reproducing functionality from the original stock web interface.
->
-> The remaining work mainly consists of testing and fixing bugs discovered during real-world use.
->
-> Once this stage is complete, the updated firmware, source code, build instructions, installation instructions, and English documentation will be published here.
->
-> Further bug fixes, device-specific testing, and long-term development of the project will depend largely on community interest and contributions from HH71VM owners willing to test the firmware on their devices.
->
-> ---
->
-> **Русский**
->
-> Работа над портированием OpenWrt завершена примерно на **75–80%**.
->
-> Текущая версия репозитория **пока не содержит последних изменений разработки**.
->
-> На данный момент:
-> - реализована поддержка Wi-Fi 5 ГГц;
-> - Realtek-часть устройства взаимодействует с Qualcomm-модемом и может поднимать мобильное интернет-соединение;
-> - портирован LuCI и разработана собственная тема;
-> - в LuCI добавлена панель управления модемной частью, повторяющая основной функционал веб-интерфейса стоковой прошивки.
->
-> Основная оставшаяся работа — тестирование и исправление ошибок, которые удастся обнаружить при реальном использовании устройства.
->
-> После завершения этого этапа здесь будут опубликованы актуальная прошивка, исходный код, инструкции по сборке и установке, а также англоязычная документация.
->
-> Дальнейшее исправление ошибок, тестирование на разных устройствах и развитие проекта во многом будет зависеть от интереса сообщества и владельцев HH71VM, готовых тестировать прошивку на своих устройствах.
+> This is a testing snapshot, not a production firmware release. It was verified on one
+> physical HH71VM. Other variants are currently unverified — that is exactly what this
+> community test is intended to discover.
 
-Порт OpenWrt на Realtek-сторону роутера **Alcatel LINKHUB HH71VM** (SoC RTL8197FS).
-Сборка запускается **из оперативной памяти** и **не изменяет содержимое флеш-памяти**.
+## Start here
 
-> ## ⚠️ Прочитайте это, прежде чем продолжать
->
-> **Это очень ранняя экспериментальная версия. Она не заменяет стоковую прошивку и не
-> устанавливается на устройство.** Образ загружается в ОЗУ и работает до первого выключения
-> питания. Выключили — вернулась заводская прошивка, ровно в том состоянии, в каком была.
->
-> **Что не работает:** Wi-Fi 5 ГГц, модемная часть (Qualcomm, SIM/LTE), веб-интерфейс,
-> сохранение любых настроек между перезагрузками. Подробнее — [известные ограничения](docs/known-issues.md).
->
-> **Что нужно:** переходник USB-UART и готовность вскрыть корпус. Без UART запустить сборку
-> нельзя. Если это вас останавливает — лучше дождитесь версии, устанавливаемой во флеш.
->
-> **Автор не несёт ответственности за последствия.** Сама процедура флеш не трогает, но
-> любые действия с устройством вы выполняете на свой страх и риск. Тестировалось только на своём личном устройстве HH71VM. На других моделях, ревизиях и т.д. — что-то может отличаться и проект не заработает. Протестировать другие устройства у автора нет возможности. Любители экспериментов, которым не жалко своё устройство — это ваш шанс одними из первых пощупать OpenWRT на нашем роутере и сообщить об успешности своих действий в Issues.
+- To run the build, follow the [RAM boot guide](docs/installation.md).
+- After any attempt, successful or not, submit a
+  [compatibility report](https://github.com/sowarden/hh71vm-openwrt-experimental/issues/new/choose).
+- For deeper checks, use the [testing and log collection guide](docs/testing.md).
 
-## Зачем это опубликовано
+## Safety boundary
 
-Порт разрабатывался и проверялся **на одном-единственном экземпляре устройства**. Часть
-решений опирается на особенности именно этой платы: тип РЧ-тракта, внешний гигабитный
-PHY на нулевом порту свитча, расположение MAC-адресов в служебном разделе флеша.
+The published image is loaded by the Realtek bootloader into RAM and is not an installer.
+On the reference device, this path was tested without writing the Realtek SPI flash. A normal
+power cycle boots the firmware already stored on the device.
 
-Если у вас другая ревизия платы или другой регион поставки — поведение может отличаться, и
-узнать об этом можно только чужими руками. Отсюда и просьба к тестировщикам: важен не
-столько отчёт «всё хорошо», сколько **любое расхождение** с описанным ниже.
+The repository intentionally does **not** include prebuilt `fwupg` or `sysupgrade` images,
+flash-writing tools, or public flash-install instructions. Flash installation will be
+published only after the release audit and recovery path are considered safe enough for
+general testing.
 
-Поддержка пользователям на данном этапе проекта не предоставляется. Только сбор информации от тестировщиков.
+The source tree includes ongoing flash-support work because it is part of the current port,
+but building or using flash images is outside the scope of this test release.
 
-## Что работает
+> [!WARNING]
+> Testing requires opening the enclosure and using a **3.3 V USB-to-UART adapter**.
+> Incorrect voltage, wiring, or handling can damage hardware. Do not connect the adapter's
+> power pin to the router.
 
-| Подсистема | Состояние |
+## Current RAM snapshot
+
+Published image: `2026-08-19`, 4,043,561 bytes
+
+SHA-256:
+`4d4a329edbe034e431a12f4f57aa8c46c4f4fe51a4d1d161a852b6a9134691f7`
+
+Verified on the reference HH71VM:
+
+| Subsystem | Status |
 |---|---|
-| Загрузка ядра, консоль | ✅ работает |
-| Ethernet (LAN-порт), мост, DHCP-сервер | ✅ работает |
-| SSH (dropbear) на `192.168.1.1` | ✅ работает |
-| Wi-Fi 2,4 ГГц, точка доступа, WPA2-AES | ✅ работает, поднимается автоматически при загрузке |
-| `opkg` присутствует в образе | ⚠️ работа с репозиториями не проверялась |
-| Wi-Fi 5 ГГц (RTL8812FE) | ❌ не реализовано |
-| Модем Qualcomm (SIM, LTE) | ❌ вне области этого порта |
-| Веб-интерфейс (LuCI) | ❌ не входит в сборку |
-| Сохранение настроек | ❌ невозможно: работа из ОЗУ |
+| OpenWrt 19.07 / Linux 4.14.275 | Boots from RAM to a working system |
+| UART and 128 MiB RAM detection | Working |
+| Ethernet and external gigabit PHY | Working |
+| 2.4 GHz Wi-Fi (`RTL8197FS`) | Working through UCI/netifd |
+| 5 GHz Wi-Fi (`RTL8812FE`) | Working through UCI/netifd |
+| Qualcomm USB mux and RNDIS WAN (`eth2`) | Working |
+| Mobile Internet through the Qualcomm modem | Working on the reference device |
+| LuCI and the custom HH71VM theme | Working |
+| HH71VM modem-control pages | Working; known limitations remain |
+| Persistent OpenWrt settings | Not available in this RAM build |
+| Public flash installation | Not released |
 
-## Будет ли проект дорабатываться?
-Да. Проект разрабатывается на чистом энтузиазме по мере наличия свободного времени и сил, поэтому ожидать скорого завершения не стоит. То что опубликовано — лишь очень ранний эксперимент, цель которого — собрать отзывы и логи тестировщиков, которые помогут детальнее разобраться в архитектуре различных версий и ревизий данного устройства чтобы максимально адаптировать прошивку. В планах поднять 5 ГГц Wi-Fi, создать веб-интерфейс без потери важного функционала из стока, наладить связь между Realtek и Qualcomm стороной для работы интернета с сим-карты, исправить критические проблемы и наконец выпустить полноценную прошивку в массы, а не ОЗУ-эксперимент. 
+The default test networks are:
 
-## Будет ли порт OpenWRT под Qualcomm-сторону?
-99% что нет. Qualcomm-сторона роутера это совершенно иная архитектура, под которую нет нужных исходников, а в частности драйверов для работы с железом. Кастомная модификация стока — возможно, полноценный OpenWRT — вряд ли. 
+| Band | SSID | Channel | Password |
+|---|---|---|---|
+| 2.4 GHz | `HH71VM` | 6 | `hh71vm12345` |
+| 5 GHz | `HH71VM-5G` | 36 | `hh71vm12345` |
 
-## Быстрый старт
+These credentials are public. Use the router only on an isolated test network and set a root
+password in LuCI before exposing any interface to untrusted clients.
 
-Подробная пошаговая инструкция со схемой подключения — **[docs/installation.md](docs/installation.md)**.
-Очень кратко:
+## Quick path
 
-1. Подключите USB-UART (уровни **3,3 В**) к контактам Realtek-стороны, скорость **38400 8N1**. Распиновка UART [опубликована на 4PDA](https://4pda.to/forum/index.php?showtopic=1037320&view=findpost&p=113177788).
-2. Соедините LAN-порт роутера с компьютером, задайте компьютеру адрес **192.168.1.50/24**.
-3. Нужен **Python 3** (Python 2 не подойдёт). Установите зависимость:
-   `pip install pyserial`
-4. Включите питание роутера, **удерживая кнопку WPS** — устройство остановится в консоли
-   загрузчика с приглашением `<RealTek>`.
-5. Запустите, подставив **имя своего COM-порта**:
+1. Connect a 3.3 V USB-to-UART adapter to the **Realtek-side** UART at `38400 8N1`.
+2. Connect the router LAN port directly to the computer and set the computer to
+   `192.168.1.50/24` with gateway `192.168.1.1`.
+3. Install Python 3 and the required package:
 
-```
-python tools/ram_boot.py firmware/openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin --port COM8
-```
+   ```text
+   python -m pip install -r tools/requirements.txt
+   ```
 
-> ⚠️ `COM8` — это порт на компьютере автора, **у вас он почти наверняка другой**. В Windows
-> посмотрите его в Диспетчере устройств («Порты (COM и LPT)»), в Linux это обычно
-> `/dev/ttyUSB0`, в macOS — `/dev/tty.usbserial-*`. В Linux и macOS команда называется
-> `python3`, а не `python`.
+4. Power on while holding WPS and wait for the `<RealTek>` prompt.
+5. Close PuTTY or any other program using the serial port, then run:
 
-Через несколько секунд появится загрузка ядра. После неё:
+   ```text
+   python tools/ram_boot.py firmware/openwrt-rtkmipsel-rtl8197f-hh71vm-nfjrom.bin --port COM8
+   ```
 
-- SSH: `ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.1` — пароля нет;
-- Wi-Fi: сеть **`HH71VM-TEST`**, пароль **`hh71vm12345`**, канал 6.
+   Replace `COM8` with your real serial port. Linux and macOS users will normally use
+   `python3` and a device such as `/dev/ttyUSB0`.
 
-Чтобы вернуться к заводской прошивке — просто выключите и включите питание.
+6. Open `http://192.168.1.1/`, test the required subsystems, and keep the generated UART log
+   from `tools/ram-boot-logs/`.
+7. Submit a compatibility report even if everything worked.
 
-## Что тестировать и как сообщать о проблемах
+Do not improvise bootloader commands. The [full guide](docs/installation.md) includes the
+pinout reference, checksum verification, success criteria, recovery, and troubleshooting.
 
-Список проверок и форма отчёта — **[docs/testing.md](docs/testing.md)**.
+## Reporting and privacy
 
-Сообщения о проблемах — во вкладке **Issues** этого репозитория. Есть два шаблона:
+Both positive and negative results are valuable. Reports should identify the visible board
+revision, device model, region, stock firmware version, and exact image hash, then include
+the UART log and requested diagnostic output.
 
-- **Отчёт об ошибке** — что-то не работает или работает не так;
-- **Отчёт о железе** — ваша ревизия платы, даже если всё заработало. Такие отчёты сейчас
-  ценнее всего.
+Review every log before publishing it. Redact device-unique data you do not want public,
+including full MAC addresses, serial numbers, IMEI/IMSI values, phone numbers, SMS content,
+credentials, and keys. Attach searchable text, not screenshots of text.
 
-К отчёту почти всегда нужен **полный лог UART с момента включения**. Скрипт сохраняет его
-сам в `tools/ram-boot-logs/`.
+## Known release limitations
 
-## Ограничения инструментов в этом репозитории
+- No root password is set in the image.
+- Both Wi-Fi networks use a public default key.
+- Long SMS handling is currently incorrect.
+- Modem control can take several minutes to become ready after some boots.
+- Long-term stability and other hardware revisions have not been validated.
+- OpenWrt-side changes disappear after power-off, but settings changed on the Qualcomm modem
+  side may persist there.
 
-В `tools/rtk_romloader.py` **намеренно отключена любая запись во флеш-память**. Этот
-репозиторий существует ровно для одного сценария — запуска из ОЗУ. Запись неподходящего
-образа во флеш ломает загрузчик необратимо, а восстановление после этого требует
-программатора, поэтому такой возможности здесь просто нет.
+See the complete [known issues and security notes](docs/known-issues.md).
 
-## Лицензии
+## Repository map
 
-В репозитории **два разных правовых режима**, подробности — в [LICENSING.md](LICENSING.md):
+| Path | Purpose |
+|---|---|
+| [`docs/installation.md`](docs/installation.md) | Guided RAM boot procedure |
+| [`docs/testing.md`](docs/testing.md) | Test matrix, log collection, and reporting |
+| [`docs/known-issues.md`](docs/known-issues.md) | Current limitations and expected quirks |
+| [`docs/sources.md`](docs/sources.md) | Source provenance and build instructions |
+| [`docs/driver-reuse.md`](docs/driver-reuse.md) | Advanced port-reuse guidance and coupling |
+| [`openwrt-feed/`](openwrt-feed/) | Current HH71VM source delta and build config |
+| [`firmware/`](firmware/) | RAM image, manifest, and checksum |
+| [`tools/ram_boot.py`](tools/ram_boot.py) | RAM-only loader and UART capture tool |
+| [`CHANGELOG.md`](CHANGELOG.md) | Published snapshot history |
 
-- **Образ прошивки** собран из OpenWrt 19.07 (ядро Linux 4.14.275) и вендорских драйверов
-  Realtek из открытых GPL-архивов, поэтому распространяется под **GPL-2.0**
-  ([LICENSE](LICENSE)). Эта лицензия разрешает в том числе коммерческое использование, но
-  обязывает любого, кто распространяет изменённую версию, открыть свои изменения на тех же
-  условиях.
-- **Документация и скрипты в `tools/`** написаны авторами репозитория и распространяются под
-  **CC BY-NC-SA 4.0**: с указанием авторства, **без коммерческого использования** и на тех же
-  условиях для производных работ. За разрешением на коммерческое использование —
-  через Issues.
+## Source and licenses
 
-Из чего именно собран образ и где взять исходные тексты — [docs/sources.md](docs/sources.md).
+The source delta used for this image is included and its OpenWrt and feed revisions are
+pinned in [docs/sources.md](docs/sources.md). A clean-room rebuild from those instructions
+still needs independent verification before the release is mirrored widely.
+
+The source tree contains components under their respective upstream licenses. Project
+documentation and the RAM boot tool use a separate license. See
+[LICENSING.md](LICENSING.md) for the repository map.

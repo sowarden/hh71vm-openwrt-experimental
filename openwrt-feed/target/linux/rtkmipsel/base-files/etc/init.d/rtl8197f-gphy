@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+# Complete external gigabit PHY initialization for switch port 0.
+#
+# The HH71VM RJ45 is connected to an external PHY at MDIO address 6. The ROM
+# bootloader initializes it for TFTP, but CONFIG_RTL_8211F_SUPPORT resets the PHY
+# during driver startup and loses that setup. Without these writes, communication
+# was one-way on the reference device.
+#
+# Stock firmware performs the same three writes. It is not yet known which subset is
+# strictly necessary, so the verified sequence is retained unchanged.
+
+START=11
+
+boot() {
+	[ -e /proc/rtl865x/phyReg ] || return 0
+
+	# Page 0xd08 (3336): board-specific analog setup.
+	echo extWrite 6 3336 17 0x9  > /proc/rtl865x/phyReg
+	echo extWrite 6 3336 21 0x19 > /proc/rtl865x/phyReg
+	# BMCR: enable and restart autonegotiation.
+	echo extWrite 6 0 0 0x1300   > /proc/rtl865x/phyReg
+}

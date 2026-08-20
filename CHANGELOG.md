@@ -1,23 +1,28 @@
-# История версий
+# Changelog
 
-Формат: дата — что изменилось. Версия образа однозначно определяется его sha256,
-он указан в `firmware/SHA256SUMS`.
+Published images are identified by their SHA-256 digest from `firmware/SHA256SUMS`.
 
-## 2026-08-13 — первая публичная сборка
+## 2026-08-19 — current RAM test snapshot
 
-sha256 `70fe5aeea90e3f2e4ab8a9e1148dac5a504efab8fd717f362257a30cf43acf64`
+SHA-256:
+`4d4a329edbe034e431a12f4f57aa8c46c4f4fe51a4d1d161a852b6a9134691f7`
 
-Первая версия, пригодная для тестирования посторонними. **Образ проверен реальной
-загрузкой на устройстве: точка доступа поднимается сама, без единой команды вручную.**
+Verified on one physical HH71VM:
 
-Работает:
+- OpenWrt 19.07 / Linux 4.14.275 boots from RAM;
+- Ethernet and the external gigabit PHY work;
+- 2.4 GHz `RTL8197FS` and 5 GHz `RTL8812FE` Wi-Fi work through UCI/netifd;
+- the Qualcomm USB mux exposes RNDIS as `eth2` and mobile Internet works;
+- LuCI, the HH71VM theme, modem-control pages, and Wi-Fi client list work;
+- the corresponding source implementation and captured build configuration are included.
 
-- загрузка ядра Linux 4.14.275 из ОЗУ, консоль по UART;
-- Ethernet, мост, DHCP-сервер, SSH на `192.168.1.1`;
-- **Wi-Fi 2,4 ГГц**: точка доступа `HH71VM-TEST`, WPA2-AES, клиенты подключаются и получают
-  адрес; точка поднимается автоматически при загрузке;
-- MAC-адреса читаются из служебного раздела флеша.
+Known limitations are tracked in [`docs/known-issues.md`](docs/known-issues.md). No prebuilt
+flash-install or sysupgrade image is published.
 
-Не работает: Wi-Fi 5 ГГц, модем, веб-интерфейс, сохранение настроек.
+## 2026-08-13 — first public RAM test snapshot
 
-Инструменты в этой поставке умеют только загрузку из ОЗУ — запись во флеш отключена.
+SHA-256:
+`70fe5aeea90e3f2e4ab8a9e1148dac5a504efab8fd717f362257a30cf43acf64`
+
+This historical image added automatic 2.4 GHz Wi-Fi startup on top of RAM boot, Ethernet,
+DHCP, and SSH. It has been superseded and is no longer included in `firmware/`.

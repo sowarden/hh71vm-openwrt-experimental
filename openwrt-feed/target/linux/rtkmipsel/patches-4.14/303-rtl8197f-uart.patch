@@ -1,0 +1,52 @@
+Public port note.
+
+Public port note.
+Public port note.
+Public port note.
+Public port note.
+
+Public port note.
+   *
+ Public port note.
+   *
+ Public port note.
+ Public port note.
+ Public port note.
+
+Public port note.
+Public port note.
+Public port note.
+
+Public port note.
+Public port note.
+
+--- a/include/uapi/linux/serial_reg.h
++++ b/include/uapi/linux/serial_reg.h
+@@ -18,8 +18,13 @@
+ /*
+  * DLAB=0
+  */
++#ifdef CONFIG_RTL_8197F
++#define UART_RX		9	/* In:  Receive buffer */
++#define UART_TX		9	/* Out: Transmit buffer */
++#else
+ #define UART_RX		0	/* In:  Receive buffer */
+ #define UART_TX		0	/* Out: Transmit buffer */
++#endif
+ 
+ #define UART_IER	1	/* Out: Interrupt Enable Register */
+ #define UART_IER_MSI		0x08 /* Enable Modem status interrupt */
+@@ -109,8 +114,13 @@
+ #define UART_LCR_STOP		0x04 /* Stop bits: 0=1 bit, 1=2 bits */
+ #define UART_LCR_WLEN5		0x00 /* Wordlength: 5 bits */
+ #define UART_LCR_WLEN6		0x01 /* Wordlength: 6 bits */
++#ifdef CONFIG_RTL_8197F
++#define UART_LCR_WLEN7		0x00 /* Wordlength: 7 bits */
++#define UART_LCR_WLEN8		0x01 /* Wordlength: 8 bits */
++#else
+ #define UART_LCR_WLEN7		0x02 /* Wordlength: 7 bits */
+ #define UART_LCR_WLEN8		0x03 /* Wordlength: 8 bits */
++#endif
+ 
+ /*
+  * Access to some registers depends on register access / configuration

@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Apply the default gateway and DNS for the Qualcomm RNDIS WAN.
+#
+# ucidef_set_interface stores arbitrary keys in /etc/board.json, but
+# /bin/config_generate reads only ifname, macaddr, protocol, ipaddr, and netmask.
+# Therefore gateway and DNS must be applied after 10_config_generate creates
+# network.wan. The values match the verified stock configuration.
+
+uci -q batch <<-EOF
+	set network.wan.gateway='192.168.225.1'
+	set network.wan.dns='192.168.225.1'
+	commit network
+EOF
+
+exit 0

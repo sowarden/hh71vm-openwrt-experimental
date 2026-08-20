@@ -1,0 +1,117 @@
+--- a/iwinfo_wext.c	2026-08-17 22:02:56.490282511 +0300
++++ b/iwinfo_wext.c	2026-08-17 22:02:56.490426501 +0300
+@@ -683,10 +683,112 @@
+ 	return -1;
+ }
+ 
++/*
++  *
++ *
++  *
++  *
++  *
++  *
++ *
++  *
++  *
++  *
++ *
++  *
++  *
++  *
++  *
++  *
++  *
++ *
++  *
++  *
++  *
++ */
++
++static uint8_t wext_rtl_cipher(int mask)
++{
++	uint8_t rv = 0;
++
++	if (mask & 2)
++		rv |= IWINFO_CIPHER_TKIP;
++
++	if (mask & 8)
++		rv |= IWINFO_CIPHER_CCMP;
++
++	return rv;
++}
++
+ static int wext_get_encryption(const char *ifname, char *buf)
+ {
+-	/* No reliable crypto info in wext */
+-	return -1;
++	struct iwinfo_crypto_entry *c = (struct iwinfo_crypto_entry *)buf;
++	FILE *f;
++	char path[64];
++	char line[256];
++	int psk = 0, wpa_cipher = 0, wpa2_cipher = 0;
++	int privacy = 0, keylen = 0;
++
++	snprintf(path, sizeof(path), "/proc/%s/mib_auth", ifname);
++
++	if (!(f = fopen(path, "r")))
++		return -1;
++
++	while (fgets(line, sizeof(line), f))
++	{
++		char *v;
++
++		/* Public port note.
++		    */
++		if ((v = strstr(line, "dot11EnablePSK:")) != NULL)
++			psk = atoi(v + strlen("dot11EnablePSK:"));
++		else if ((v = strstr(line, "dot11WPA2Cipher:")) != NULL)
++			wpa2_cipher = atoi(v + strlen("dot11WPA2Cipher:"));
++		else if ((v = strstr(line, "dot11WPACipher:")) != NULL)
++			wpa_cipher = atoi(v + strlen("dot11WPACipher:"));
++		else if ((v = strstr(line, "dot11PrivacyAlgrthm:")) != NULL)
++			privacy = atoi(v + strlen("dot11PrivacyAlgrthm:"));
++		else if ((v = strstr(line, "dot11PrivacyKeyLen:")) != NULL)
++			keylen = atoi(v + strlen("dot11PrivacyKeyLen:"));
++	}
++
++	fclose(f);
++
++	memset(c, 0, sizeof(struct iwinfo_crypto_entry));
++
++	if (psk)
++	{
++		c->enabled     = 1;
++		c->wpa_version = (uint8_t)(psk & 3);
++		c->auth_suites = IWINFO_KMGMT_PSK;
++
++		c->pair_ciphers = wext_rtl_cipher(wpa_cipher | wpa2_cipher);
++
++		/* Public port note.
++		    */
++		if (!c->pair_ciphers)
++			c->pair_ciphers = IWINFO_CIPHER_CCMP;
++
++		c->group_ciphers = c->pair_ciphers;
++	}
++	else if (privacy > 1 && keylen > 0)
++	{
++		/* Public port note. */
++		c->enabled      = 1;
++		c->auth_algs    = IWINFO_AUTH_OPEN | IWINFO_AUTH_SHARED;
++		c->auth_suites  = IWINFO_KMGMT_NONE;
++		c->pair_ciphers = (keylen > 5) ? IWINFO_CIPHER_WEP104 : IWINFO_CIPHER_WEP40;
++		c->group_ciphers = c->pair_ciphers;
++	}
++	else
++	{
++		c->enabled       = 0;
++		c->auth_suites   = IWINFO_KMGMT_NONE;
++		c->pair_ciphers  = IWINFO_CIPHER_NONE;
++		c->group_ciphers = IWINFO_CIPHER_NONE;
++	}
++
++	return 0;
+ }
+ 
+ static int wext_get_phyname(const char *ifname, char *buf)

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Generate /etc/config/wireless when an rtl8192cd radio appears. Non-cfg80211
+# drivers do not emit ieee80211 hotplug events, so this follows the broadcom-wl
+# pattern and listens for the physical wlan netdevs instead.
+#
+# Exclude VAP/WDS names such as wlan0-va0 and wlan0-wds0. The detector itself is
+# idempotent, but repeated configuration runs are unnecessary.
+
+case "$ACTION:$INTERFACE" in
+	add:wlan[0-9])
+		/sbin/wifi config
+	;;
+esac

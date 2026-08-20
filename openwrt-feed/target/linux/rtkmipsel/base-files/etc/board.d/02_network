@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# HH71VM network roles verified during the Ethernet and Qualcomm bring-up:
+#
+# eth0: LAN, switch ports 0-3 plus CPU port 8 (mask 0x10f, VLAN 9). The physical
+#       RJ45 uses port 0 through an external gigabit PHY.
+# eth1: internal switch port 4 (mask 0x110, VLAN 8). It is not exposed externally.
+# eth2: WAN, the internal Qualcomm link over USB/RNDIS.
+#
+# The RNDIS interface is eth2 rather than usb0 under Linux 4.14 because rndis_host
+# uses FLAG_ETHER and the modem-provided MAC does not set the locally administered
+# bit. This was verified on hardware; the unique modem MAC is intentionally omitted
+# from this public comment. eth0 and eth1 are registered earlier by the switch driver,
+# making eth2 stable on the reference device.
+#
+# The WAN address is static, matching the stock /jffs2/bin/oem_start.sh behavior:
+#     ifconfig usb0 192.168.225.111
+#     route add default gw 192.168.225.1
+#     dnrd --cache=off -s 192.168.225.1
+# No Qualcomm-side DHCP client path was observed in stock. Gateway and DNS are applied
+# later by 99-hh71vm-wan-gateway because config_generate ignores those board.json keys.
+
+. /lib/functions/uci-defaults.sh
+
+board_config_update
+ucidef_set_interfaces_lan_wan "eth0" "eth2"
+ucidef_set_interface "wan" ifname "eth2" protocol "static" ipaddr "192.168.225.111" netmask "255.255.255.0" gateway "192.168.225.1" dns "192.168.225.1"
+board_config_flush
+
+exit 0

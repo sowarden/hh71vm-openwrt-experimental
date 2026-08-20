@@ -1,92 +1,100 @@
-# Известные ограничения и особенности
+# Known issues and release boundaries
 
-Список поддерживается в актуальном состоянии. Если вы столкнулись с чем-то отсюда — отчёт не
-нужен, это уже известно.
+This page describes the published 2026-08-19 RAM snapshot. Do not file a new bug for an item
+already listed here unless your result adds materially different evidence.
 
-## Не реализовано
+## Security limitations
 
-| Что | Почему |
-|---|---|
-| **Wi-Fi 5 ГГц (RTL8812FE)** | Драйвер для этого чипа требует отдельного слоя (HALMAC), который в исходниках вендора не собирается без доработки. Запланировано |
-| **Модем: SIM, LTE, звонки** | Это вторая, независимая система на чипе Qualcomm. Данный порт касается только Realtek-стороны |
-| **Веб-интерфейс (LuCI)** | Не входит в сборку. Управление через SSH |
-| **Сохранение настроек** | Система работает из ОЗУ, флеш не изменяется. Любые изменения исчезают при выключении |
-| **Установка во флеш** | Запланировано отдельной вехой. Требует доказанного пути восстановления, поэтому не выпускается раньше времени |
+- **No root password is set.** SSH and LuCI must not be exposed to an untrusted network.
+- **Both Wi-Fi APs use the public key `hh71vm12345`.** Change it for a private test, knowing
+  that the change disappears when the RAM system is powered off.
+- **Some vendor procfs controls still have overly broad permissions.** The release audit
+  must reduce permissions on entries that can expose key material.
+- **Logs can contain unique identifiers.** Redact MAC addresses, serial numbers, IMEI/IMSI,
+  SIM data, phone numbers, messages, credentials, and keys before posting.
 
-## Особенности, которые выглядят как ошибки, но ими не являются
+Use this build only on an isolated lab network.
 
-**`ip link` всегда показывает `eth0` без `NO-CARRIER`.** Вендорский драйвер не сообщает ядру
-о состоянии линка. Реальное состояние портов смотрите так:
+## RAM-only behavior
+
+- OpenWrt settings and files created in the running system disappear after power-off.
+- The RAM image is not a flash installer. Prebuilt `fwupg` and `sysupgrade` images are not
+  published, and the public loader has no flash-write command.
+- The current source tree contains ongoing flash-support code, but using it is outside the
+  public test scope.
+- Settings changed through the modem UI act on the separate Qualcomm subsystem and may
+  persist there. A Realtek/OpenWrt reboot is not guaranteed to undo them.
+
+## Hardware coverage
+
+The current build has been validated on one HH71VM. Other HH71/HH71VM board revisions,
+regional variants, RF front ends, carrier variants, and flash layouts remain unverified.
+
+The build selects these reference-unit values:
+
+- SoC radio: `SOC_RFE_TYPE_1`;
+- PCIe 5 GHz radio: `RTL8812FE`, slot 0, `SLOT_0_RFE_TYPE_0`;
+- external gigabit PHY on switch port 0, MDIO address 6.
+
+A unit with different hardware may boot but have reduced radio performance, unstable links,
+or no networking. Report marker differences; do not attempt flash installation.
+
+## Modem and LuCI limitations
+
+- Modem control-channel preparation has occasionally taken roughly 3–9 minutes.
+- Long multipart SMS messages are truncated or assembled in the wrong order. Do not use the
+  current UI for important message handling.
+- Long-term reconnect behavior after Qualcomm-side restart is not yet validated.
+- Some radio/scan signal and mode fields in the UI still need audit or clearer handling.
+- Long-term stability and paid SMS sending have not been validated.
+
+## Network-driver quirks
+
+`ip link` may not show Ethernet carrier correctly because the vendor driver does not update
+the standard carrier state. Use:
 
 ```sh
 cat /proc/rtl865x/port_status
 cat /proc/eth0/link_status
 ```
 
-**Свитч называется `switch0`, а не `rtl819x`.** Команда `swconfig dev rtl819x show` ответит
-«Failed to connect to the switch». Правильно:
+The switch is named `switch0`:
 
 ```sh
 swconfig list
 swconfig dev switch0 show
 ```
 
-**`/proc/wlan0/sta_info` показывает `active: 0` даже при подключённом клиенте.** Счётчик
-станций в этой сборке не отражает реальность. Подключённых клиентов смотрите по
-`/tmp/dhcp.leases` и `/proc/net/arp`.
+Some vendor Wi-Fi proc counters are incomplete. In particular, `/proc/wlanX/sta_info` and
+several fields under `/proc/wlanX/stats` may not reflect active traffic reliably. Prefer
+`iwinfo`, DHCP leases, ARP entries, and an actual traffic test.
 
-**В `/proc/wlan0/stats` поля `tx_time`, `rx_time`, `tx_mgnt_pkts` всегда нулевые.** Эта группа
-счётчиков драйвером не заполняется, хотя трафик идёт.
+The two radio interfaces currently use the same default MAC behavior. Record observations,
+but redact unique addresses in public reports.
 
-**`TX packets` у `wlan0` растёт очень медленно.** Кадры-маяки формирует само радио, минуя
-сетевой стек, и в этом счётчике они не учитываются.
+## SSH and file transfer
 
-**Обычный `scp` не работает:** `/usr/libexec/sftp-server: not found`. В сборке нет
-sftp-сервера. Используйте `scp -O`.
+The bundled Dropbear offers the legacy `ssh-rsa` host-key algorithm:
 
-**SSH требует явного указания алгоритма.** Встроенный сервер предлагает только ssh-rsa:
-
-```sh
+```text
 ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.1
 ```
 
-**SSH выдаёт такое предупреждение при подключении:**
+If a previous RAM boot used another host key:
+
+```text
+ssh-keygen -R 192.168.1.1
 ```
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
-Someone could be eavesdropping on you right now (man-in-the-middle attack)!
-It is also possible that a host key has just been changed.
-...
+
+The image has no SFTP server. Use legacy SCP mode when required:
+
+```text
+scp -O local-file root@192.168.1.1:/tmp/
 ```
-Удалите файл C:\Users\Ваш_пользователь\\.ssh\known_hosts, или аналогичный файл вашего клиента который вы используете для подключения к SSH.
 
-**Телефон сам отключается от сети.** Android и iOS уходят с сетей без доступа в интернет.
-Это поведение клиента, а не разрыв связи. Чтобы отличить одно от другого, смотрите, рвётся
-ли соединение при активном обмене данными.
+## Not yet independently reproduced
 
-**Пароль root не задан.** Система свежая, вход по SSH без пароля. Не оставляйте устройство
-в таком виде в чужой сети.
-
-## Не проверялось
-
-Про это отчёты особенно интересны — данных нет вообще.
-
-- **`opkg` с официальными репозиториями.** Архитектура пакетов `mipsel_24kc`. Обычные
-  программы, скорее всего, поставятся; модули ядра из официальных репозиториев работать не
-  будут — ядро в этой сборке своё. В `/etc/opkg/distfeeds.conf` прописан несуществующий
-  путь под наш таргет, его придётся править вручную.
-- **Длительная работа.** Больше нескольких часов подряд сборка не проверялась.
-- **Поведение при высокой нагрузке** на Wi-Fi и Ethernet одновременно.
-- **Другие ревизии платы и другие регионы поставки.** См. [что тестировать](testing.md).
-
-## Откуда берётся MAC-адрес
-
-Адреса читаются напрямую из служебного раздела флеша (сигнатура `H601`) при инициализации
-сетевого драйвера. Если чтение не удалось, остаётся вендорская заглушка
-`00:12:34:56:78:96` — это признак того, что на вашей плате разметка служебного раздела
-отличается, и о таком стоит сообщить.
-
-Отдельная известная мелочь: MAC у интерфейса `wlan0` не совпадает с MAC `eth0` из служебного
-раздела. Источник адреса для радио пока не установлен.
+The included source state, build configuration, base revision, and feed revisions were
+captured from the environment that produced the image. A second clean-checkout rebuild has
+not yet independently reproduced the published SHA-256. See [sources and build
+instructions](sources.md) for the exact verification target.

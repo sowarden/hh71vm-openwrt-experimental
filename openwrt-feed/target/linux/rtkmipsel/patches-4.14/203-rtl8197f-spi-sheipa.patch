@@ -1,0 +1,40 @@
+Public port note.
+
+Public port note.
+Public port note.
+
+Public port note.
+Public port note.
+Public port note.
+Public port note.
+
+Public port note.
+Public port note.
+Public port note.
+Public port note.
+
+Public port note.
+Public port note.
+
+--- a/drivers/spi/Kconfig
++++ b/drivers/spi/Kconfig
+@@ -527,6 +527,11 @@
+ config SPI_PXA2XX_PCI
+ 	def_tristate SPI_PXA2XX && PCI && COMMON_CLK
+
++config SPI_SHEIPA
++	bool "Realtek SHEIPA SPI Controller"
++	help
++	  This is the driver for the SHEIPA SPI Controller.
++
+ config SPI_ROCKCHIP
+ 	tristate "Rockchip SPI controller driver"
+ 	help
+--- a/drivers/spi/Makefile
++++ b/drivers/spi/Makefile
+@@ -112,3 +112,5 @@
+ # SPI slave protocol handlers
+ obj-$(CONFIG_SPI_SLAVE_TIME)		+= spi-slave-time.o
+ obj-$(CONFIG_SPI_SLAVE_SYSTEM_CONTROL)	+= spi-slave-system-control.o
++
++obj-$(CONFIG_SPI_SHEIPA)		+= sheipa/

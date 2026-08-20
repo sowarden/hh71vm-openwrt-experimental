@@ -1,118 +1,190 @@
-# Что тестировать и как сообщать о найденном
+# Testing and log collection
 
-Сборка проверялась **на одном экземпляре устройства**. Поэтому самое ценное, что вы можете
-сделать, — не найти новую ошибку, а **подтвердить или опровергнуть, что на вашей плате всё
-ведёт себя так же**.
+The primary question is not whether the reference HH71VM works — it does. The purpose of
+this snapshot is to discover which HH71/HH71VM hardware variants behave the same and where
+their board, radio, switch, or modem configuration differs.
 
-Отчёт «проверил, работает как описано» полезен не меньше, чем отчёт об ошибке: он говорит,
-что порт не привязан к одному конкретному экземпляру. Пожалуйста, присылайте и такие.
+Submit a report after **every complete attempt**, including an uneventful success.
 
-## Приоритет 1 — различия в железе
+## Before testing
 
-Это то, ради чего сборка опубликована.
+Record these values from the stock firmware or device label before opening the enclosure:
 
-**1. Строки инициализации радио.** Сразу после загрузки выполните:
+- exact marketed model (`HH71`, `HH71VM`, or another printed variant);
+- stock firmware version;
+- purchase country/region and carrier branding, if any;
+- board revision printed on the PCB, if visible.
+
+Do not publish the device serial number, full MAC addresses, IMEI/IMSI, SIM identifiers,
+phone numbers, messages, credentials, or keys. A report normally needs only whether a MAC
+matches the label, not the complete address.
+
+## Evidence required for every report
+
+1. Exact image SHA-256.
+2. Complete UART log from power-on through the end of the test. `ram_boot.py` saves it under
+   `tools/ram-boot-logs/`.
+3. Result category: booted and worked, booted with differences, or failed.
+4. Device model, region, stock version, and visible board revision.
+5. The output collected below, for every command the system reached.
+
+Review and sanitize logs before attaching them. Preserve line order and error messages; use
+plain-text files rather than screenshots.
+
+## 1. Boot and platform identity
+
+Capture:
+
+```sh
+ubus call system board
+cat /etc/openwrt_release
+cat /proc/cpuinfo
+dmesg
+logread
+```
+
+Report the last UART line if boot does not reach a shell. Do not trim earlier warnings just
+because a later stage succeeds.
+
+## 2. Hardware-variation markers
+
+Radio initialization:
 
 ```sh
 dmesg | grep -iE "PHY_REG_PG|Bonding|RFE type|chip_version"
 ```
 
-На проверенном экземпляре получается:
+The reference device reported:
 
-```
+```text
 [97F] Bonding Type 97FS, PKG1
 [97F] RFE type 1 PHY paratemters: GPA0+GLNA0
 [GetHwReg88XX][PHY_REG_PG_8197Fmp_Type1]
 chip_version=0x100a
 ```
 
-**Любое отличие здесь — самое важное, что можно сообщить.** `RFE type` задаётся при сборке;
-если у вашей платы РЧ-тракт другой, Wi-Fi может работать со сниженной мощностью,
-нестабильно или не работать вовсе, и лечится это отдельной сборкой.
+Any difference is important. Do not describe a different value as a defect by itself; it is
+evidence of a potentially different hardware configuration.
 
-**2. Разметка портов свитча.**
+Switch mapping:
 
 ```sh
 dmesg | grep -E "eth[01] added"
+cat /proc/rtl865x/port_status
+swconfig list
+swconfig dev switch0 show
 ```
 
-Ожидается `eth0 ... Member port 0x10f` и `eth1 ... Member port 0x110`.
+The reference build used member masks `0x10f` for `eth0` and `0x110` for `eth1`.
 
-**3. MAC-адреса.** Читаются из служебного раздела флеша:
+MAC retrieval:
 
 ```sh
 dmesg | grep hwsetting
 ip link show eth0
 ```
 
-Адрес должен совпадать с наклейкой на устройстве. Если вместо этого показан
-`00:12:34:56:78:96` — чтение MAC не сработало на вашей плате, обязательно сообщите.
+State whether the address matches the device label, but redact the unique portion before
+posting. `00:12:34:56:78:96` is the vendor fallback and indicates that the `H601` read did
+not supply a device address.
 
-## Приоритет 2 — Wi-Fi 2,4 ГГц
+## 3. Ethernet
 
-Это самая свежая часть, ошибки здесь наиболее вероятны.
+Check:
 
-- Видна ли сеть `HH71VM-TEST` в списке на телефоне или ноутбуке?
-- Подключается ли клиент по паролю `hh71vm12345`?
-- Выдаётся ли адрес по DHCP (`192.168.1.x`)?
-- Проходит ли `ping 192.168.1.1` с подключённого клиента?
-- **Держится ли соединение?** Оставьте клиента подключённым на 10-15 минут.
-  Учтите: телефоны часто сами уходят с сети без интернета — это не ошибка сборки. Смотрите
-  на то, рвётся ли связь при активном использовании.
-- Скорость: скопируйте файл по SSH или запустите `iperf3`, если поставите его. Абсолютные
-  цифры не так важны, как порядок величины и стабильность.
-- Несколько клиентов одновременно.
-- Дальнобойность в сравнении со стоковой прошивкой — субъективно, но полезно.
+- DHCP from the router and access to `192.168.1.1`;
+- negotiated link speed;
+- ping and sustained traffic;
+- unplug/replug behavior;
+- `cat /proc/rtl865x/port_status` before and after a cable change.
 
-## Приоритет 3 — проводная часть
+Compare with stock under the same cable and computer when possible.
 
-- Скорость соединения (порт гигабитный).
-- Стабильность при длительной нагрузке.
-- Поведение при перетыкании кабеля: `cat /proc/rtl865x/port_status`.
-- `swconfig dev switch0 show` — счётчики портов.
+## 4. Wi-Fi on both bands
 
-## Приоритет 4 — всё остальное
+The expected default networks are `HH71VM` on 2.4 GHz and `HH71VM-5G` on 5 GHz, both using
+`hh71vm12345`.
 
-- `opkg update` с официальными репозиториями. **Заведомо не проверялось.** Архитектура
-  пакетов — `mipsel_24kc`. Обычные программы, вероятно, поставятся; модули ядра (`kmod-*`)
-  из официальных репозиториев работать не будут — ядро здесь своё. Результат интересен.
-- Стабильность системы: оставьте устройство работать на несколько часов, потом посмотрите
-  `dmesg` на предмет oops и `free` на предмет утечек памяти.
-- Любые сообщения об ошибках в `dmesg`, которых нет в списке известных.
+For each band, report:
 
-## Чего тестировать НЕ надо
+- whether the SSID is visible;
+- association and WPA2-AES success;
+- DHCP and ping to `192.168.1.1`;
+- active traffic for at least 10–15 minutes;
+- approximate throughput and stability;
+- more than one client, if available;
+- any material range difference from stock.
 
-- **Wi-Fi 5 ГГц** — не реализован, драйвер для него в эту сборку не входит.
-- **Модем, SIM, LTE** — это отдельная система на чипе Qualcomm, порт её не касается вообще.
-- **Веб-интерфейс** — не входит в сборку, управление только через SSH.
-- **Сохранение настроек** — невозможно по построению: система живёт в ОЗУ.
-- **Запись во флеш** — в этой версии заблокирована намеренно, и обходить блокировку не надо.
+Capture:
 
-## Как сообщать
+```sh
+wifi status
+iwinfo
+dmesg | grep -iE "wlan|rtl8192|8812|97F|RFE"
+```
 
-Вкладка **Issues** этого репозитория, шаблоны заполняются автоматически:
+Phones often leave networks that appear to have no Internet. Distinguish client policy from
+an actual link drop by keeping traffic active and checking another client when possible.
 
-- **Bug report** — что-то работает не так;
-- **Hardware report** — ваша плата, даже если всё в порядке.
+## 5. Qualcomm modem and mobile Internet
 
-### Что приложить обязательно
+First test without changing modem settings.
 
-1. **Полный лог UART с момента подачи питания.** Скрипт сохраняет его сам в
-   `tools/ram-boot-logs/`. Без лога большинство проблем неразрешимо.
-2. Вывод `dmesg` из загруженной системы, если до неё дошло.
-3. Ревизию платы, если видно на самой плате, и регион, в котором куплено устройство.
-4. Что именно делали и что ожидали увидеть.
+Check:
 
-### Что помогает больше всего
+- whether WAN appears as `eth2`;
+- whether LuCI reports the modem-control channel as ready;
+- whether mobile status is populated;
+- Internet access from an Ethernet client;
+- Internet access from both Wi-Fi bands.
 
-- **Воспроизводимость.** «Рвётся раз в 10 минут при копировании файла» полезнее, чем
-  «иногда отваливается».
-- **Сравнение со стоком.** Если что-то работает хуже заводской прошивки, скажите, как оно
-  ведёт себя на стоке в тех же условиях.
-- **Отрицательный результат.** «Прошёл всю инструкцию, всё совпало» — это тоже данные.
+Capture:
 
-### Пожалуйста, не надо
+```sh
+ip addr show eth2
+ip route
+logread | grep -iE "hh71vm|modem|rndis|usb"
+dmesg | grep -iE "rndis|usb 1-1|eth2"
+```
 
-- Скриншотов текста вместо самого текста — логи нужны текстом, их ищут поиском.
-- Отчётов без лога UART в стиле «не работает».
-- Просьб добавить 5 ГГц или веб-интерфейс — это известно и запланировано.
+Some modem-control functions change persistent Qualcomm-side settings. Do not change APN,
+SIM, or network-mode values unless that is the explicit test, and record the original value.
+Never include SMS content, phonebook data, IMEI/IMSI, or SIM identifiers in a public log.
+
+## 6. LuCI
+
+Open `http://192.168.1.1/` and check:
+
+- dashboard and basic status pages;
+- network and wireless pages;
+- the HH71VM theme in light and dark mode;
+- modem overview and read-only status;
+- Wi-Fi client list.
+
+Record browser name/version for UI defects. Attach a screenshot only for visual layout bugs;
+all console and system logs should remain text.
+
+## 7. Stability
+
+If the basic checks pass, leave traffic active for several hours and then collect:
+
+```sh
+uptime
+free
+dmesg
+logread
+```
+
+Report kernel oops, memory growth, modem-control disconnects, interface disappearance, and
+repeatable timing rather than only saying that something "sometimes fails."
+
+## Submit the report
+
+Use the repository's [issue chooser](https://github.com/sowarden/hh71vm-openwrt-experimental/issues/new/choose):
+
+- **Compatibility report** for every hardware test, including success;
+- **Bug report** for a reproducible software defect after compatibility data has already
+  been provided.
+
+If one run exposes both hardware differences and a bug, start with the compatibility report
+and link a separate bug report only when the defect can be described independently.

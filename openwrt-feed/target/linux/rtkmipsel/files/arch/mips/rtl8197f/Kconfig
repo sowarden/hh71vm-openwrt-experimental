@@ -1,0 +1,96 @@
+#
+
+#
+
+
+#
+
+
+#     select GPIOLIB.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+
+
+
+#
+
+if REALTEK_97F
+
+source "arch/mips/rtl8197f/Kconfig.legacy"
+
+config SOC_RTL8197F
+	def_bool y
+	select RTL_8197F_GW
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select HAVE_CLK
+	select CLKDEV_LOOKUP
+	select HW_HAS_PCI
+	select GPIOLIB
+
+config RTL_FLASH_SIZE
+	hex "Flash size"
+	default "0x1000000"
+	help
+	  Size of the SPI NOR chip, in bytes. HH71VM carries a Winbond w25q128
+	  (16 MiB, JEDEC EF4018).
+
+config RTL819X_DW_SPI
+	bool "BSP DesignWare SPI controller support"
+	default n
+	select SPI_DESIGNWARE
+	select SPI_DW_MMIO
+	help
+	  The boot flash of this board does not sit on this controller, see the
+	  comment at the top of this file. Enable only for extra SPI peripherals.
+
+config RTL819X_DW_SPI0
+	bool "Enable DesignWare SPI0 controller"
+	depends on RTL819X_DW_SPI
+
+config RTL819X_DW_SPI1
+	bool "Enable DesignWare SPI1 controller"
+	depends on RTL819X_DW_SPI
+
+config RTK_BOOTINFO_DUALIMAGE
+	bool "DualImage Support(OpenWRT SDK)"
+	default n
+
+comment "Second Bank Offset"
+	depends on RTK_BOOTINFO_DUALIMAGE
+
+config RTK_DUALIMAGE_FLASH_OFFSET
+	hex "flash offset"
+	depends on RTK_BOOTINFO_DUALIMAGE
+	default "0x800000"
+	help
+	  Offset of the second bank, in most cases half of the flash size.
+
+menu "Realtek RTL8197F machine selection"
+
+config RTL8197_MACH_HH71VM
+	bool "Alcatel LINKHUB HH71VM"
+	default y
+	help
+	  Say 'Y' here if you want your kernel to support the
+	  Alcatel LINKHUB HH71VM (RTL8197FS + RTL8812FE).
+
+endmenu
+
+endif
