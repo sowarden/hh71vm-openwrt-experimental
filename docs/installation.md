@@ -22,7 +22,12 @@ You need:
 You must open the enclosure. Use the labelled photo below for the Realtek-side UART
 connection. Visually confirm the board orientation before connecting anything.
 
-![Realtek-side UART pinout: RX, TX, GND](assets/realtek-uart-pinout.png)
+<details>
+<summary>Show the Realtek UART pinout photo</summary>
+
+![Realtek-side UART pinout: RX, TX, GND](assets/realtek-uart-pinout.jpg)
+
+</details>
 
 The loader does not use the stock web interface, Telnet, SSH, or any stock `root` password.
 It talks only to the Realtek bootloader over UART and transfers the RAM image over TFTP.
