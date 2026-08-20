@@ -33,7 +33,15 @@ class PublicationBoundaryTests(unittest.TestCase):
             relative = path.relative_to(ROOT)
             if ".git" in relative.parts or "__pycache__" in relative.parts:
                 continue
-            if path.suffix.lower() in {".bin", ".pyc"}:
+            if path.suffix.lower() in {
+                ".bin",
+                ".gif",
+                ".jpeg",
+                ".jpg",
+                ".png",
+                ".pyc",
+                ".webp",
+            }:
                 continue
             if any(part.endswith("-logs") for part in relative.parts):
                 continue
